@@ -1,0 +1,85 @@
+
+#!/usr/bin/env python3
+# Name: Alexander Hoefler (ahoefler)
+# Group: none
+
+class NucParams:
+    """Creates dictionaries to store fasta file information.
+        Attributes:
+            attr1 (dict): Dictionary of RNA codons.
+            attr2 (dict): Dictionary of DNA codons.
+            attr3 (dict): Dictionary of valid Nucleotides.
+    """
+
+    rnaCodonTable = {
+                    # RNA codon table
+    # U
+        'UUU': 'F', 'UCU': 'S', 'UAU': 'Y', 'UGU': 'C',  # UxU
+        'UUC': 'F', 'UCC': 'S', 'UAC': 'Y', 'UGC': 'C',  # UxC
+        'UUA': 'L', 'UCA': 'S', 'UAA': '-', 'UGA': '-',  # UxA
+        'UUG': 'L', 'UCG': 'S', 'UAG': '-', 'UGG': 'W',  # UxG
+    # C
+        'CUU': 'L', 'CCU': 'P', 'CAU': 'H', 'CGU': 'R',  # CxU
+        'CUC': 'L', 'CCC': 'P', 'CAC': 'H', 'CGC': 'R',  # CxC
+        'CUA': 'L', 'CCA': 'P', 'CAA': 'Q', 'CGA': 'R',  # CxA
+        'CUG': 'L', 'CCG': 'P', 'CAG': 'Q', 'CGG': 'R',  # CxG
+    # A
+        'AUU': 'I', 'ACU': 'T', 'AAU': 'N', 'AGU': 'S',  # AxU
+        'AUC': 'I', 'ACC': 'T', 'AAC': 'N', 'AGC': 'S',  # AxC
+        'AUA': 'I', 'ACA': 'T', 'AAA': 'K', 'AGA': 'R',  # AxA
+        'AUG': 'M', 'ACG': 'T', 'AAG': 'K', 'AGG': 'R',  # AxG
+    # G
+        'GUU': 'V', 'GCU': 'A', 'GAU': 'D', 'GGU': 'G',  # GxU
+        'GUC': 'V', 'GCC': 'A', 'GAC': 'D', 'GGC': 'G',  # GxC
+        'GUA': 'V', 'GCA': 'A', 'GAA': 'E', 'GGA': 'G',  # GxA
+        'GUG': 'V', 'GCG': 'A', 'GAG': 'E', 'GGG': 'G'   # GxG
+    }
+
+    dnaCodonTable = {key.replace('U','T'):value for key, value in rnaCodonTable.items()}
+
+    validNucleotides = {'A': 0, 'C': 0, 'G': 0, 'T': 0, 'U': 0, 'N':0}
+
+    def __init__(self):
+        self.aminoAcidComposition = {} #setting up empty dictionaries, values = 0
+        self.codonsComposition = {}
+        self.nucleotideComposition = {}
+
+        for aa in ProteinParam.aa2mw: 
+            self.aminoAcidComposition[aa] = 0
+
+        for codon in self.rnaCodonTable:  
+            self.codonsComposition[codon] = 0
+
+        for nuc in NucParams.validNucleotides:  
+            self.nucleotideComposition[nuc] = 0
+
+    def addSequence(self, thisSequence):
+        for nuc in thisSequence:
+            if nuc in NucParams.validNucleotides.keys():  # Adds sequences using the inti method, checks that sequences entered are valid
+                self.nucleotideComposition[nuc] += 1 
+
+        rnaSequence = thisSequence.replace('T', 'U')  # Changes DNA sequence to RNA (T&U)
+
+        for start in range(0, len(rnaSequence), 3):
+            codon = rnaSequence[start: start + 3]
+            if codon in self.rnaCodonTable:
+                self.codonsComposition[codon] += 1  # Adds RNA sequence to dictionary w/ count.
+                aa = self.rnaCodonTable[codon]
+                if aa != '-':
+                    self.aminoAcidComposition[aa] += 1  # Adds amino acid to dictionary w/ count.
+
+
+    def aaComposition(self):
+        return self.aminoAcidComposition
+
+    def nucComposition(self):
+        return self.nucleotideComposition #updates the acidComposition and returns it
+
+    def codonComposition(self):
+        return self.codonsComposition #Returns RNA with counts of codons
+
+    def nucCount(self):
+        nucTotal = 0
+        for count in self.nucleotideComposition.values():
+            nucTotal += count
+        return nucTotal #gives the total count of the nucleotides in the dictionary
