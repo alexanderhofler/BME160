@@ -1,5 +1,5 @@
-import sys
 from sequenceAnalysis import NucParams, FastAreader, ProteinParam
+
 
 class genomeAnalyzer:
     def __init__(self, filename='testGenome.fa'):
@@ -20,11 +20,11 @@ class genomeAnalyzer:
 
         codonCount = nucParams.codonComposition()
 
-        for codons in sorted(codonCount):
+        for codons in sorted(codonCount): # sort codons in alpha order, by amino Acid
             codonTotal = codonCount[codons]
             aa = nucParams.rnaCodonTable[codons]
             aaCount = nucParams.aaComposition()[aa]
-
+            # calculate relative codon usage for each codon and print
             if aaCount != 0:
                 total = (codonTotal/aaCount) * 100
             else:
@@ -44,7 +44,7 @@ class genomeAnalyzer:
         for head, seq in myReader.readFasta():
             nucParams.addSequence(seq)
 
-        length = nucParams.nucCount()/1000000
+        length = nucParams.nucCount()/1000
         return length , nucParams
 
 
