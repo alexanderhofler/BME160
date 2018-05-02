@@ -12,9 +12,7 @@ class genomeAnalyzer:
         length, nucParams = self.sequenceLength(self.myReader)
         print("sequence length = {:.2f}Mb".format(length))
         print(" ")
-
         self.gc = self.gcContent(nucParams)
-
         print('GC content = {:.1f}%'.format(self.gc))
         print(" ")
 
