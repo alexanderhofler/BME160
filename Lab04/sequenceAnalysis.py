@@ -3,13 +3,21 @@
 # Group: none
 
 import sys
+from collections import defaultdict
 
 
 class NucParams:
-    """Creates 3 dictionaries to store fasta file information.
-        Dict1: RNA codons
-        Dict2: DNA codons
-        Dict3: Nucleotides
+    # TODO Alex, I would add even more information regarding the assumptions made by this class
+
+    """Keep track of summary information of DNA nucleotide sequences.
+
+        self.aaComp: counts of amino acids
+        self.codonComp: counts of codons
+        self.nucComp: counts of nucleotides
+        self.total_nuc: total number of nucleotides
+        self.dnaCodonTable: dictionary of DNA codons to AA
+        self.rnaCodonTable: dictionary of RNA codons to AA
+        self.aaRnaTable: dictionary of AA to list of RNA codons
     """
 
     rnaCodonTable = {
@@ -37,64 +45,132 @@ class NucParams:
     }
 
     dnaCodonTable = {key.replace('U','T'):value for key, value in rnaCodonTable.items()}
+    nucleotides = {'A': 0, 'C': 0, 'G': 0, 'T': 0, 'U': 0, 'N': 0}
 
-    nucleotides = {'A': 0, 'C': 0, 'G': 0, 'T': 0, 'U': 0, 'N':0}
-
-    def __init__(self, inString= ''):
-
-        self.aaComp = {} #setting up empty dictionaries, values = 0
+    def __init__(self, sequence=''):
+        """Initialize sequence if given and setup data structure containers
+        :param sequence: nucleotide sequence (assume DNA)
+        """
+        # setting up empty dictionaries, values = 0
+        self.aaComp = {}
         self.codonComp = {}
         self.nucComp = {}
+        self.total_nuc = 0
+        # create dict of aa to list of RNA codons
+        self.aaRnaTable = self._create_aaTable()
 
         for aa in ProteinParam.aa2mw:
             self.aaComp[aa] = 0
-
         for codon in self.rnaCodonTable:
             self.codonComp[codon] = 0
-
-        for nuc in NucParams.nucleotides:
+        for nuc in self.nucleotides:
             self.nucComp[nuc] = 0
+        # all nucleotides
+        self.nucleotides = {"A", "T", "G", "C", "N", "U"}
+        self.dna_nucleotides = {"A", "T", "G", "C", "N"}
 
-    def addSequence(self, inSeq):
-        for nuc in inSeq:
-            if nuc in NucParams.nucleotides.keys():  # Adds sequences using the inti method, checks that sequences entered are valid
-                self.nucComp[nuc] += 1
+        self.addSequence(sequence)
 
-        rnaSequence = inSeq.replace('T', 'U')  # Changes DNA sequence to RNA (T&U)
+    def addSequence(self, sequence):
+        """Add sequence to class, infers if sequence is DNA or RNA
+        :param sequence: nucleotide sequence
+        """
+        # convert to uppercase
+        inSeq = sequence.upper()
+        seq_chars = set(inSeq)
+        # check if it is dna sequence
+        assert seq_chars.issubset(self.nucleotides), \
+            "Unexpected nucleotide found. Check input sequence "
+        if "U" in seq_chars:
+            self._calculate_codon_and_aa(inSeq, rna=True)
+        else:
+            self._calculate_codon_and_aa(inSeq, rna=False)
 
-        for start in range(0, len(rnaSequence), 3):
-            codon = rnaSequence[start: start + 3]
+    # Alex, I add '_' before functions to signal that they should not be used by a user of the class
+    def _calculate_codon_and_aa(self, sequence, rna=False):
+        """
+        Given the name of a sequence, calculates number of codons and amino acids for a sequence
+        :param sequence: DNA nucleotide sequence to analyze
+        :param rna: boolean option for RNA sequences
+        :return: boolean to signal completion
+        """
+        # update nuc count
+        self.total_nuc += len(sequence)
+        # updatd nucComp
+        for nuc in self.nucleotides:
+            self.nucComp[nuc] += sequence.count(nuc)
+
+        # convert to RNA if not rna sequence
+        if not rna:
+            sequence = self.reverse_complement(sequence)  # Changes DNA sequence to RNA (T&U)
+
+        # count all codons and amino acids
+        for start in range(0, len(sequence), 3):
+            codon = sequence[start: start + 3]
             if codon in self.rnaCodonTable:
                 self.codonComp[codon] += 1  # Adds RNA sequence to dictionary w/ count.
                 aa = self.rnaCodonTable[codon]
-                if aa != '-':
-                    self.aaComp[aa] += 1  # Adds amino acid to dictionary w/ count.
+                self.aaComp[aa] += 1  # Adds amino acid to dictionary w/ count.
+        return True
 
+    # Alex, since sequences should always be represented as 5'-3', if we are given a DNA sequence we cannot just replace
+    # the T's with U's.
+    # http://rushartsbiology.wikispaces.com/file/view/translation/80076181/translation
+    def reverse_complement(self, dna_sequence):
+        """Convert 5' - 3' DNA sequence to 5'-3' RNA sequence
+        :param dna_sequence: dna sequence"""
+        # make sure dna sequence again just incase this function gets used outside of the one method it is used in now
+        assert set(dna_sequence).issubset(self.dna_nucleotides), \
+            "Unexpected nucleotide found. Check input sequence "
+        find = "ATGC"
+        replace = "UACG"
+        transtab = str.maketrans(find, replace)
+        rna_sequence = dna_sequence.upper().translate(transtab)[::-1]
+        return rna_sequence
 
+    # Alex, I would add doc strings to each of these methods
     def aaComposition(self):
         return self.aaComp
 
     def nucComposition(self):
-        return self.nucComp #updates the acidComposition and returns it
+        return self.nucComp  # updates the acidComposition and returns it
 
     def codonComposition(self):
-        return self.codonComp #Returns RNA with counts of codons
+        return self.codonComp  # Returns RNA with counts of codons
 
     def nucCount(self):
-        nucTot = 0
-        for count in self.nucComp.values():
-            nucTot += count
-        return nucTot #gives the total count of the nucleotides in the dictionary
+        """Computes the number of nucleotides of sequences added
+        :return: length of the sequence
+        """
+        return self.total_nuc  # gives the total count of the nucleotides in the dictionary
+
+    def _create_aaTable(self):
+        """Creates amino acid table which gives list of RNA codons for each amino acid"""
+        # default dict allows me to do operations on aa_table[aa] without having to set it as something.
+        # without the defaultdict container we would have to do the following
+
+        # aa_table = {}
+        # for codon, aa in self.rnaCodonTable.items():
+        #     if aa in aa_table.keys():
+        #         aa_table[aa].append(codon)
+        #     else:
+        #         aa_table[aa] = [codon]
+
+        aa_table = defaultdict(list)
+        for codon, aa in self.rnaCodonTable.items():
+            aa_table[aa].append(codon)
+
+        return aa_table
 
 
-class ProteinParam :
+class ProteinParam:
 
     aa2mw = {
         'A': 89.093,  'G': 75.067,  'M': 149.211, 'S': 105.093, 'C': 121.158,
         'H': 155.155, 'N': 132.118, 'T': 119.119, 'D': 133.103, 'I': 131.173,
         'P': 115.131, 'V': 117.146, 'E': 147.129, 'K': 146.188, 'Q': 146.145,
-        'W': 204.225,  'F': 165.189, 'L': 131.173, 'R': 174.201, 'Y': 181.189
-        }
+        'W': 204.225,  'F': 165.189, 'L': 131.173, 'R': 174.201, 'Y': 181.189,
+        '-': 0}
 
     mwH2O = 18.015
     aa2abs280= {'Y':1490, 'W': 5500, 'C': 125}
@@ -198,7 +274,7 @@ class ProteinParam :
         return h2oWeight - water
 
 
-class FastAreader :
+class FastAreader:
     '''
     Define objects to read FastA files.
 
