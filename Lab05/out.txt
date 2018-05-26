@@ -1,0 +1,6 @@
+findORF_test.py
+out.txt
+__pycache__
+sequenceAnalysis.py
+tass2.fa
+tass2ORFdata-ATG-100.txt
