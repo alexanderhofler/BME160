@@ -2,86 +2,81 @@
 # Alexander Hoefler (ahoefler)
 # Group: none
 
-import sequenceAnalysis as SA
+"""
+    Input for STDIN (in order to compile):
+    python3 findUnique.py <[bos-tRNA.fa].fa (or whatever the name of your preferred file is)
+"""
+import sequenceAnalysis as seqAnal
+
 
 class findUnique:
     def __init__(self):
         """
-        Takes in multiple sequences of tRNA from a FASTA file and finds power set of each tRNA sequence,
-        then appends each power set to a list.
-        Attributes:
-            attr1 (list): List of power sets for each tRNA.
-            attr2 (list): List of unique sets for each tRNA.
-            attr3 (dict): Dictionary with key: count (0-22) & value: [tRNA header, tRNA sequence]
+        Reads tRNA from the inputted Fasta file. Adds the power set of each sequence to a list
+
         """
         self.powerSetList = []
-        self.uniqueList = []  # Used to save 22 unique substring sets for each tRNA.
-        self.headerSequenceDictionary = {}  # Dictionary to save the header and sequence of each tRNA as a list.
-        fastaFile = SA.FastAreader()  # Instantiate object of FastAreader class so we can read in file.
+        self.uniqueList = []  # List fo tRNA substrings
+        self.headerSequenceDictionary = {}  # sequence saving dict.
+        fastaFile = seqAnal.FastAreader()  # pulls in fasta reader and initializes here to read in fasta file
         count = 0
 
-        for header, sequence in fastaFile.readFasta():  # Reads FastA file and yields the tRNA header/sequence.
-            filteredSequence = self.removeCharacters(sequence)  # Removes dashes and underscores from sequence.
-            self.headerSequenceDictionary[count] = [header, filteredSequence] # Initialize dictionary values with list = [header, squence].
-            mypowerSet = self.powerSet(filteredSequence)  # Finds the power set for each tRNA sequence.
-            self.powerSetList.append(mypowerSet)  # Add power set for each tRNA to a list.
+        for header, sequence in fastaFile.readFasta():
+            filteredSequence = self.removeChar(sequence)  # makes sure only valid characters are being used
+            self.headerSequenceDictionary[count] = [header, filteredSequence]
+            mypowerSet = self.powerSet(filteredSequence)
+            self.powerSetList.append(mypowerSet)  # Add power set (after finding) for each tRNA to a list.
             count += 1
 
-    def removeCharacters(self, sequence):
+    def removeChar(self, sequence):
         """
-        Removes dashes and underscores from tRNA sequences.
+        Removes unwanted characters from the sequence
         """
         noDashSequence = sequence.replace('-','')
         noUnderscoreSequence = noDashSequence.replace('_','')
         return noUnderscoreSequence
 
-
     def powerSet(self, sequence):
         """
-        This method returns a set of substrings(power set) for each tRNA sequence.
-        Ex: 'ABABC' = ['A', 'B', 'C',
-                      'AB', 'BC'
-                      'ABA', 'BAB', 'ABC',
-                      'ABAB', 'BABC',
-                      'ABABC']
+        Returns tRNA substrings
         """
         powerSets = set()
         for index in range(len(sequence)):
             size = len(sequence)
             while size > index:
-                powerSets.add(sequence[index:size])  # Takes big chunk then smaller chunks and moves on to next letter.
+                powerSets.add(sequence[index:size])
                 size -= 1
-        return powerSets
+        return powerSets #goes through the sequence piecewise before returning power values
 
     def findUniques(self):
         """
-        Computes the union of all other tRNA sets, and then removes that set from the current tRNAset to
-        find unique subsequences of each tRNA sequence.
+        Looks for duplicate tRNA sequences and removes from all but the appriopiate set to
+        obtain a unique set of tRNA subsequences.
         """
-        for eachSet in self.powerSetList:
-            bigUnion = set()
+        for allSet in self.powerSetList:
+            union = set()
             copySet = set()
-            copyList = self.powerSetList.copy()  # Create copy of original power set list.
-            copySet = eachSet.copy()  # Create copy of current power set in power set list.
-            copyList.remove(copySet)  # Remove the current power set from our list.
-            for powerSet in copyList:
-                bigUnion = bigUnion.union(powerSet)  # The union of all the other tRNA sets.
-            copySet.difference_update(bigUnion)  # Update the copySet, removing elements found in bigUnion.
+            copyList = self.powerSetList.copy()
+            copySet = allSet.copy()  # Make duplicate of the possible pwer set
+            copyList.remove(copySet)  # Remove power set from list.
+            for powerSet in copyList: # removes the duplicate elements between union and copySet
+                union = union.union(powerSet)  # The union of all the other tRNA sets.
+            copySet.difference_update(union)  # Update the copySet, removing elements found in union.
 
             newSet = copySet.copy()
-            for string1 in copySet:
+            for string1 in copySet:  # checks prior strings to identify more possible substrings
                 uniqueSet = copySet.copy()
                 uniqueSet.remove(string1)
                 for string2 in uniqueSet:
-                    if string1 in string2:  # Checks if string1 is a substring of string2.
-                        if len(string1) < len(string2):  # We only want the minimal form.
-                            newSet.discard(string2)  # Gets rid of superstrings.
+                    if string1 in string2:
+                        if len(string1) < len(string2):
+                            newSet.discard(string2)  # Gets rid of teh larger substrings.
 
-            self.uniqueList.append(newSet)  # Add the truly uniques sets to a list.
+            self.uniqueList.append(newSet)
 
     def printSequences(self):
         """
-        Prints out information to STDOUT.
+        Prints to STDOUT commandline
         """
         for index in range(0,len(self.headerSequenceDictionary)):
             mySequence = self.headerSequenceDictionary[index]
@@ -90,17 +85,16 @@ class findUnique:
             print(header)
             print(sequence)
             size = len(sequence)
-            for position in range(0, size):  # Keeps track of position for each sequence.
-                for substring in self.uniqueList[index]: # For each unique subsequence in my unique list.
+            for position in range(0, size):  # Note positions of the substrings for later
+                for substring in self.uniqueList[index]:
                     substringLength = len(substring)
                     if substring == sequence[position:position + substringLength]:
-                        output = ('.')*position + substring  # 'position' number of '.''s then append substring.
+                        output = ('.')*position + substring  # ipnut appropiate amount of "."'s then add found substring
                         print(output)
 
 def main():
     """
-    Creates an object of findUnique class, then reads in a FastA file and finds unique subsequences of each tRNA in FastA file.
-    Then prints out the header, sequence and aligned unique substrings with '.' to help reader see alignment.
+    Runs above code to find and print header, sequence and substrings from the fasta file.
     """
     mytRNA = findUnique()
     mytRNA.findUniques()
